@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Caja Dinámica de 20 Intentos - Multi-Premios</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background: #0f172a;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            overflow: hidden;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        .pantalla {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.98);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .oculto { display: none !important; }
+        #menu-principal {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .tarjeta-juego {
+            background: #1e293b;
+            border: 3px solid #334155;
+            border-radius: 15px;
+            padding: 25px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            max-width: 280px;
+            width: 100%;
+        }
+        .tarjeta-juego.completado {
+            background: #064e3b;
+            border-color: #059669;
+            opacity: 0.8;
+            cursor: pointer;
+        }
+        .contenedor-caja-juego {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #0f172a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 90;
+            padding: 15px 0;
+            box-sizing: border-box;
+        }
+        .panel-superior {
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 12px 10px;
+            background: rgba(15, 23, 42, 0.9);
+            box-sizing: border-box;
+            border-bottom: 3px solid #334155;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .caja-info {
+            background: #334155;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 2px solid #475569;
+        }
+        .zona-interactiva {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            width: 100%;
+            cursor: pointer;
+        }
+        #icono-caja-anim {
+            font-size: 70px;
+            transition: transform 0.1s ease;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.6));
+            margin-bottom: 15px;
+            animation: flotarCaja 1.5s ease-in-out infinite alternate;
+        }
+        @keyframes flotarCaja {
+            0% { transform: translateY(0px) scale(1); }
+            100% { transform: translateY(-8px) scale(1.06); }
+        }
+        @keyframes destelloAnim {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+        .efecto-destello {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, #f59e0b 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: destelloAnim 0.4s ease-out forwards;
+        }
+        .btn-accion-principal {
+            background: linear-gradient(135deg, #10b981, #047857);
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            font-weight: bold;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 320px;
+        }
+        .lista-resultados {
+            max-height: 240px;
+            overflow-y: auto;
+            width: 100%;
+            text-align: left;
+            padding-right: 5px;
+        }
+        .item-res {
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="menu-principal">
+        <h1 style="color: #f59e0b; margin-bottom: 5px; font-size: 22px;">🎁 Caja Dinámica de 20 Intentos</h1>
+        <p id="descripcion-menu" style="color: #cbd5e1; font-size: 13px; margin-bottom: 20px; text-align: center; padding: 0 10px;">Abre 20 cajas. Cada toque genera una cantidad variable de premios asegurados basados en probabilidades exactas.</p>
+        <div class="tarjeta-juego" id="tarjeta-menu" onclick="verificarYComenzar()">
+            <div style="font-size:38px; margin-bottom:8px;" id="icono-menu">📦</div>
+            <div style="font-size:15px; font-weight:bold; color:white;" id="texto-menu-btn">Abrir Caja Múltiple</div>
+            <div id="subtexto-menu-btn" style="font-size:12px; color:#cbd5e1; margin-top:8px; font-weight:bold;">▶️ Jugar Ahora</div>
+        </div>
+    </div>
+
+    <div id="mg-caja" class="contenedor-caja-juego oculto">
+        <div class="panel-superior">
+            <div class="caja-info">📦 Intento: <span id="num-intento-actual">1</span>/20</div>
+            <div class="caja-info" style="color: #f59e0b;">✨ ¡Toca la pantalla!</div>
+        </div>
+
+        <div class="zona-interactiva" id="zona-clic" onclick="tocarCaja(event)">
+            <div id="caja-mensaje" style="font-size: 17px; font-weight: bold; color: #f59e0b; margin-bottom: 10px; text-align: center; padding: 0 15px;">¡Toca para abrir la caja #${1}!</div>
+            <div id="icono-caja-anim">🎁</div>
+            <div style="font-size: 12px; color: #94a3b8; margin-top: 15px;">(Toca la pantalla para obtener tus premios)</div>
+        </div>
+    </div>
+
+    <div id="pantalla-resultado" class="pantalla oculto">
+        <div style="background: #1e293b; border: 3px solid #334155; border-radius: 20px; padding: 20px; max-width: 350px; width: 100%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; box-sizing: border-box;">
+            <h1 id="titulo-resultado" style="color: #f59e0b; font-size: 19px; margin-top: 0; margin-bottom: 5px;">🎉 ¡Resumen de tus 20 Cajas!</h1>
+            <p id="subtitulo-resultado" style="color: #cbd5e1; font-size: 12px; margin-bottom: 15px;">Estos son todos los premios obtenidos en tus intentos:</p>
+            
+            <div class="lista-resultados" id="contenedor-lista-premios">
+                </div>
+
+            <button class="btn-accion-principal" style="margin-top: 15px;" onclick="location.reload()">Aceptar</button>
+        </div>
+    </div>
+
+    <script>
+        const CLAVE_CAJA_20_INTENTOS = 'caja_dinamica_20_intentos_v1';
+        let datosJuego = JSON.parse(localStorage.getItem(CLAVE_CAJA_20_INTENTOS)) || {
+            completado: false,
+            historialIntentos: []
+        };
+
+        if (datosJuego.completado) {
+            bloquearMenuComoCompletado();
+        }
+
+        function bloquearMenuComoCompletado() {
+            let tarjeta = document.getElementById('tarjeta-menu');
+            tarjeta.className = "tarjeta-juego completado";
+            document.getElementById('icono-menu').innerText = "✅";
+            document.getElementById('texto-menu-btn').innerText = "Cajas Ya Abiertas";
+            document.getElementById('subtexto-menu-btn').innerText = "Ver historial guardado";
+            document.getElementById('descripcion-menu').innerText = "Ya has completado tus 20 aperturas en esta caja. Haz clic aquí para ver tus premios reclamados:";
+            tarjeta.onclick = () => mostrarHistorialGuardado();
+        }
+
+        function mostrarHistorialGuardado() {
+            let listaHTML = "";
+            datosJuego.historialIntentos.forEach((res) => {
+                listaHTML += `<div class="item-res"><span><b>Intento #${res.intento}</b> (${res.premios.length} premios)</span><span style="color: #f59e0b; font-weight: bold; font-size: 11px; max-width: 170px; text-align: right;">${res.premios.join(', ')}</span></div>`;
+            });
+            document.getElementById('contenedor-lista-premios').innerHTML = listaHTML;
+            document.getElementById('titulo-resultado').innerText = "✅ Historial Reclamado";
+            document.getElementById('subtitulo-resultado').innerText = "Tus recompensas registradas de las 20 cajas:";
+            document.getElementById('pantalla-resultado').classList.remove('oculto');
+        }
+
+        function verificarYComenzar() {
+            if (datosJuego.completado) return;
+            document.getElementById('menu-principal').style.display = 'none';
+            document.getElementById('mg-caja').classList.remove('oculto');
+            iniciarNuevoIntento();
+        }
+
+        // Lista completa de premios con sus porcentajes exactos indicados
+        const listaPremiosProbabilidades = [
+            { nombre: "Caja de patitos de goma", prob: 70 },
+            { nombre: "Caja de conechocos", prob: 30 },
+            { nombre: "Caja de bellotas", prob: 10 },
+            { nombre: "Poción R", prob: 0.01 },
+            { nombre: "20 robux", prob: 0.10 },
+            { nombre: "Cebo de abeja", prob: 0.10 },
+            { nombre: "Cebo de flor", prob: 0.10 },
+            { nombre: "Huevo jubilado", prob: 20 },
+            { nombre: "Huevo roto", prob: 80 },
+            { nombre: "Huevo básico", prob: 70 },
+            { nombre: "Huevo de cristal", prob: 10 },
+            { nombre: "Huevo de diamante", prob: 5 },
+            { nombre: "Huevo de mascota", prob: 40 },
+            { nombre: "3 regalos pequeños", prob: 79 },
+            { nombre: "2 regalos grandes", prob: 39 },
+            { nombre: "2 regalos mega grandes", prob: 30 },
+            { nombre: "Caja 2D", prob: 7 },
+            { nombre: "Caja RGB", prob: 2 },
+            { nombre: "Cofre de accesorios", prob: 89 },
+            { nombre: "300 créditos bucks", prob: 20 },
+            { nombre: "200 crédito bucks", prob: 20 },
+            { nombre: "800 crédito bucks", prob: 15 }
+        ];
+
+        // Función para sortear un premio individual de la lista según su porcentaje independiente
+        function sortearPremioUnico() {
+            let premiadosPosibles = [];
+            listaPremiosProbabilidades.forEach(item => {
+                let rnd = Math.random() * 100;
+                if (rnd <= item.prob) {
+                    premiadosPosibles.push(item.nombre);
+                }
+            });
+            // Si por azar estricto no cae ninguno, aseguramos al menos el Huevo básico o Caja de patitos para cumplir el "algo sí o sí asegurado"
+            if (premiadosPosibles.length === 0) {
+                return "Caja de patitos de goma";
+            }
+            // Devolver uno al azar de los que pasaron su umbral de probabilidad
+            return premiadosPosibles[Math.floor(Math.random() * premiadosPosibles.length)];
+        }
+
+        // Distribución de cantidad de premios por cada intento (según la regla proporcionada):
+        // 50% -> 3 premios
+        // 16% -> 4 premios (acumulado 66%)
+        // 14% -> 5 premios (acumulado 80%)
+        // 10% -> 6 premios (acumulado 90%)
+        // 5%  -> 7 premios (acumulado 95%)
+        // 4%  -> 8 premios (acumulado 99%)
+        // 1%  -> 9 premios (acumulado 100%)
+        function determinarCantidadPremios() {
+            let rnd = Math.random() * 100;
+            if (rnd < 50) return 3;
+            if (rnd < 66) return 4;
+            if (rnd < 80) return 5;
+            if (rnd < 90) return 6;
+            if (rnd < 95) return 7;
+            if (rnd < 99) return 8;
+            return 9;
+        }
+
+        let intentoActualIndex = 1;
+        let historialSesion = [];
+        let bloqueadoProceso = false;
+
+        function iniciarNuevoIntento() {
+            document.getElementById('num-intento-actual').innerText = intentoActualIndex;
+            document.getElementById('caja-mensaje').innerText = `¡Toca para abrir la caja #${intentoActualIndex} de 20!`;
+            bloqueadoProceso = false;
+        }
+
+        function tocarCaja(e) {
+            if (bloqueadoProceso) return;
+            bloqueadoProceso = true;
+
+            crearDestello(e);
+
+            // Determinar cuántos premios caen en este intento según las probabilidades
+            let cantidadPremios = determinarCantidadPremios();
+            let premiosGanadosIntento = [];
+
+            for (let i = 0; i < cantidadPremios; i++) {
+                premiosGanadosIntento.push(sortearPremioUnico());
+            }
+
+            historialSesion.push({
+                intento: intentoActualIndex,
+                premios: premiosGanadosIntento
+            });
+
+            let textoResumen = premiosGanadosIntento.join(', ');
+            document.getElementById('caja-mensaje').innerText = `🎁 ¡Obtuviste (${cantidadPremios}): ${textoResumen}!`;
+
+            setTimeout(() => {
+                if (intentoActualIndex < 20) {
+                    intentoActualIndex++;
+                    iniciarNuevoIntento();
+                } else {
+                    finalizarTodasLasCajas();
+                }
+            }, 1500);
+        }
+
+        function crearDestello(e) {
+            let zona = document.getElementById('zona-clic');
+            let rect = zona.getBoundingClientRect();
+            let x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left - 40;
+            let y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top - 40;
+
+            let destello = document.createElement('div');
+            destello.className = 'efecto-destello';
+            destello.style.left = x + 'px';
+            destello.style.top = y + 'px';
+            zona.appendChild(destello);
+
+            setTimeout(() => {
+                destello.remove();
+            }, 400);
+        }
+
+        function finalizarTodasLasCajas() {
+            datosJuego.completado = true;
+            datosJuego.historialIntentos = historialSesion;
+            localStorage.setItem(CLAVE_CAJA_20_INTENTOS, JSON.stringify(datosJuego));
+
+            let listaHTML = "";
+            historialSesion.forEach((res) => {
+                listaHTML += `<div class="item-res"><span><b>Intento #${res.intento}</b> (${res.premios.length} premios)</span><span style="color: #f59e0b; font-weight: bold; font-size: 11px; max-width: 170px; text-align: right;">${res.premios.join(', ')}</span></div>`;
+            });
+            document.getElementById('contenedor-lista-premios').innerHTML = listaHTML;
+
+            document.getElementById('mg-caja').classList.add('oculto');
+            document.getElementById('pantalla-resultado').classList.remove('oculto');
+        }
+    </script>
+</body>
+  </html>
+  
